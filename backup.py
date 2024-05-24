@@ -25,13 +25,7 @@ def select_target_dir():
 
 # 제외할 경로들을 선택하는 함수
 def select_exclude_paths():
-    # 파일 선택
-    file_paths = filedialog.askopenfilenames(title="제외할 파일 선택")
-    if file_paths:
-        for path in file_paths:
-            if path not in exclude_paths:
-                exclude_paths.append(path)
-                exclude_listbox.insert(tk.END, path)
+    
     
     # 디렉토리 선택
     dir_path = filedialog.askdirectory(title="제외할 디렉토리 선택")
