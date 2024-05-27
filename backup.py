@@ -1,13 +1,50 @@
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, messagebox, ttk, simpledialog
 import shutil
 import os
 import threading
+import subprocess
 from concurrent.futures import ThreadPoolExecutor
 
 BUFFER_SIZE = 1024 * 1024  # 1MB 버퍼
 
 exclude_paths = []  # 제외할 경로를 저장하는 리스트
+sudo_password = None  # sudo 비밀번호를 저장할 변수
+
+# sudo 비밀번호를 요청하는 함수
+def ask_for_sudo_password():
+    global sudo_password
+    while True:
+        sudo_password = simpledialog.askstring("Password", "Enter sudo password:", show='*')
+        if not sudo_password:
+            messagebox.showerror("Error", "Password is required for sudo access.")
+            root.destroy()
+            return
+
+        if validate_sudo_password(sudo_password):
+            break
+        else:
+            messagebox.showerror("Error", "Incorrect password, please try again.")
+
+# 비밀번호가 올바른지 확인하는 함수
+def validate_sudo_password(password):
+    try:
+        result = subprocess.run(['sudo', '-S', '-v'], input=password+'\n', text=True, check=True, capture_output=True)
+        return result.returncode == 0
+    except subprocess.CalledProcessError:
+        return False
+
+# sudo 권한으로 명령을 실행하는 함수
+def execute_with_sudo(command):
+    global sudo_password
+    try:
+        result = subprocess.run(['sudo', '-S'] + command, input=sudo_password+'\n', text=True, capture_output=True)
+        if result.returncode != 0:
+            raise subprocess.CalledProcessError(result.returncode, result.args, output=result.stdout, stderr=result.stderr)
+        return result.returncode == 0
+    except subprocess.CalledProcessError as e:
+        messagebox.showerror("Error", f"Command failed: {e.cmd}\nReturn code: {e.returncode}\nOutput: {e.output}\nError: {e.stderr}")
+        return False
 
 # 소스 디렉토리를 선택하는 함수
 def select_source_dir():
@@ -25,16 +62,11 @@ def select_target_dir():
 
 # 제외할 경로들을 선택하는 함수
 def select_exclude_paths():
-    
-    
-    # 디렉토리 선택
     dir_path = filedialog.askdirectory(title="제외할 디렉토리 선택")
     if dir_path:
         if dir_path not in exclude_paths:
             exclude_paths.append(dir_path)
             exclude_listbox.insert(tk.END, dir_path)
-
-
 
 # 제외할 경로들을 리스트에서 제거하는 함수
 def remove_exclude_paths():
@@ -45,13 +77,26 @@ def remove_exclude_paths():
 
 # 파일을 버퍼를 사용하여 복사하는 함수
 def copy_file_with_buffer(src_filepath, dst_filepath):
-    with open(src_filepath, 'rb') as src_file:
-        with open(dst_filepath, 'wb') as dst_file:
-            while True:
-                buffer = src_file.read(BUFFER_SIZE)
-                if not buffer:
-                    break
-                dst_file.write(buffer)
+    command = f"dd if={src_filepath} of={dst_filepath} bs={BUFFER_SIZE}"
+    if not execute_with_sudo(command.split()):
+        raise PermissionError(f"Failed to copy {src_filepath} to {dst_filepath} with sudo.")
+
+# 특정 경로가 제외할 경로에 포함되는지 확인하는 함수
+def should_exclude(path):
+    for exclude_path in exclude_paths:
+        if path.startswith(exclude_path):
+            return True
+    return False
+
+# 파일 관리자를 열기 위한 함수
+def open_file_manager(directory):
+    try:
+        # 리눅스에서는 xdg-open 명령어로 파일 관리자를 엽니다.
+        subprocess.run(['xdg-open', directory])
+    except Exception as e:
+        # 파일 관리자를 열지 못하는 경우에 대한 예외 처리
+        messagebox.showerror("Error", f"Failed to open file manager: {str(e)}")
+
 
 # 복사 진행 상태를 보여주면서 파일을 복사하는 함수
 def copy_with_progress(src, dst, progress, progress_label, progress_window, skipped_files):
@@ -66,7 +111,7 @@ def copy_with_progress(src, dst, progress, progress_label, progress_window, skip
             filepath = os.path.join(dirpath, filename)
             try:
                 if not os.path.islink(filepath):  # 심볼릭 링크가 아닌 경우에만 크기를 계산
-                    total_size += os.path.getsize(filepath)  # 소스 디렉토리의 총 파일 크기를 계산
+                    total_size += os.path.getsize(filepath)
             except (PermissionError, FileNotFoundError, OSError):
                 skipped_files.append(filepath)
                 continue
@@ -99,13 +144,8 @@ def copy_with_progress(src, dst, progress, progress_label, progress_window, skip
     # 복사가 완료되면 상태 표시 창을 닫고 완료 메시지를 표시
     progress_window.destroy()
     messagebox.showinfo("Success", "Backup completed successfully!")
-
-# 특정 경로가 제외할 경로에 포함되는지 확인하는 함수
-def should_exclude(path):
-    for exclude_path in exclude_paths:
-        if path.startswith(exclude_path):
-            return True
-    return False
+    open_file_manager(dst)
+    os.startfile(dst)  # 목적지 디렉토리를 파일 탐색기로 열기
 
 # 파일을 복사하면서 진행 상태를 업데이트하는 함수
 def copy_file(src_filepath, dst_filepath, skipped_files, total_size, progress, progress_label):
@@ -138,7 +178,7 @@ def start_backup_thread(source, target, progress, progress_label, progress_windo
     copied_size_lock = threading.Lock()
     try:
         if os.path.exists(target_path):
-            shutil.rmtree(target_path)  # 타겟 디렉토리가 존재하면 삭제
+            execute_with_sudo(["rm", "-rf", target_path])  # 타겟 디렉토리가 존재하면 관리자 권한으로 삭제
         threading.Thread(target=copy_with_progress, args=(source, target_path, progress, progress_label, progress_window, skipped_files)).start()
     except Exception as e:
         progress_window.destroy()
@@ -181,7 +221,8 @@ def full_backup():
         # 풀 백업을 수행하기 전에 타겟 디렉토리를 비움
         target_path = os.path.join(target, "full_backup")
         if os.path.exists(target_path):
-            shutil.rmtree(target_path)  # 기존 타겟 디렉토리를 삭제
+            if not execute_with_sudo(["rm", "-rf", target_path]):  # 기존 타겟 디렉토리를 관리자 권한으로 삭제
+                return
 
         # 백업 진행 상태를 보여주는 새로운 창 생성
         progress_window = tk.Toplevel(root)
@@ -206,6 +247,9 @@ def incremental_backup():
 root = tk.Tk()
 root.title("Backup Tool")
 root.geometry("660x500")
+
+# 관리자 권한 요청
+ask_for_sudo_password()
 
 # 제목 레이블 생성
 title_label = tk.Label(root, text="Backup Tool", font=("Helvetica", 16))
