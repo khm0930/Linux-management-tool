@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 BUFFER_SIZE = 1024 * 1024  # 1MB 버퍼
 
-exclude_paths = []  # 제외할 경로를 저장하는 리스트
+exclude_paths = ["/proc", "/sys", "/dev", "/run", "/tmp", "/mnt", "/media", "/lost+found","/home/khm/.local/share/Trash"]  # 기본 제외 경로 추가
 sudo_password = None  # sudo 비밀번호를 저장할 변수
 
 # sudo 비밀번호를 요청하는 함수
@@ -59,6 +59,10 @@ def select_target_dir():
     if target_dir:
         target_entry.delete(0, tk.END)
         target_entry.insert(0, target_dir)
+        
+        if target_dir not in exclude_paths:
+            exclude_paths.append(target_dir)
+            exclude_listbox.insert(tk.END, target_dir)
 
 # 제외할 경로들을 선택하는 함수
 def select_exclude_paths():
@@ -74,12 +78,6 @@ def remove_exclude_paths():
     for index in selected_items[::-1]:
         exclude_listbox.delete(index)
         del exclude_paths[index]
-
-# 파일을 버퍼를 사용하여 복사하는 함수
-def copy_file_with_buffer(src_filepath, dst_filepath):
-    command = f"dd if={src_filepath} of={dst_filepath} bs={BUFFER_SIZE}"
-    if not execute_with_sudo(command.split()):
-        raise PermissionError(f"Failed to copy {src_filepath} to {dst_filepath} with sudo.")
 
 # 특정 경로가 제외할 경로에 포함되는지 확인하는 함수
 def should_exclude(path):
@@ -97,17 +95,79 @@ def open_file_manager(directory):
         # 파일 관리자를 열지 못하는 경우에 대한 예외 처리
         messagebox.showerror("Error", f"Failed to open file manager: {str(e)}")
 
+# 제외된 항목들을 기록하는 함수
+def record_skipped_items(output):
+    skipped_files = []
+    for line in output.split('\n'):
+        if line.startswith('skipping non-regular'):
+            skipped_files.append(line)
+    return skipped_files
+
+def copy_file_with_rsync(src, dst):
+    command = [
+        'rsync', '-aAXv', '--safe-links',
+        '--filter=R "P *::*"',  # "::"가 포함된 파일 제외
+        '--exclude=/proc',
+        '--exclude=/sys',
+        '--exclude=/dev',
+        '--exclude=/run',
+        '--exclude=/tmp',
+        '--exclude=/mnt',
+        '--exclude=/media',
+        '--exclude=/lost+found',
+        src, dst
+    ]
+    if not execute_with_sudo(command):
+        raise PermissionError(f"Failed to copy {src} to {dst} with rsync and sudo.")
+
+
+
+
+def copy_file(src_filepath, dst_filepath, skipped_files, total_size, progress, progress_label):
+    global copied_size
+    print("copy_file start\n")
+    try:
+        if os.path.islink(src_filepath):
+            # 심볼릭 링크를 복사
+            linkto = os.readlink(src_filepath)
+            os.symlink(linkto, dst_filepath)
+        else:
+            # rsync를 사용하여 파일 복사
+            output = copy_file_with_rsync(src_filepath, dst_filepath)
+            skipped_files.extend(record_skipped_items(output))
+            file_size = os.path.getsize(src_filepath)
+            with copied_size_lock:
+                copied_size += file_size  # 복사된 파일의 크기를 추적
+                progress_value = int((copied_size / total_size) * 100)
+                progress['value'] = progress_value
+                progress_label.config(text=f"{progress_value}%")
+                root.update_idletasks()
+    except (PermissionError, FileNotFoundError, OSError) as e:
+        skipped_files.append(src_filepath)
+        return str(e)
+
+
+
+
 
 # 복사 진행 상태를 보여주면서 파일을 복사하는 함수
 def copy_with_progress(src, dst, progress, progress_label, progress_window, skipped_files):
     total_size = 0
     copied_size = 0
-
+    print("copy with progress\n")
     # 전체 파일 크기를 계산, 예외 처리 포함
     for dirpath, _, filenames in os.walk(src):
+        print(filenames)
+        print(dirpath)
+        print("copy with progress1\n")
         if should_exclude(dirpath):
+            print(filenames)
+            print(dirpath)
+            print("copy with progress111\n")
             continue  # 제외할 경로는 무시
         for filename in filenames:
+            print(filename)
+            print("copy with progress2\n")
             filepath = os.path.join(dirpath, filename)
             try:
                 if not os.path.islink(filepath):  # 심볼릭 링크가 아닌 경우에만 크기를 계산
@@ -118,21 +178,29 @@ def copy_with_progress(src, dst, progress, progress_label, progress_window, skip
 
     if not os.path.exists(dst):
         os.makedirs(dst)
+        if dst not in exclude_paths:
+            print("copy with progress3\n")
+            exclude_paths.append(dst)
+            # tkinter 위젯 업데이트를 main thread에서 실행
+            root.after(0, lambda: exclude_listbox.insert(tk.END, dst))
 
     # ThreadPoolExecutor를 사용하여 멀티스레딩으로 파일 복사
     with ThreadPoolExecutor(max_workers=os.cpu_count()) as executor:
+        print("copy with progress4\n")
         futures = []
         for dirpath, dirnames, filenames in os.walk(src):
             if should_exclude(dirpath):
                 continue  # 제외할 경로는 무시
             dst_dirpath = dirpath.replace(src, dst, 1)
             if not os.path.exists(dst_dirpath):
+                print("dst_dirpath: ",dst_dirpath)
                 os.makedirs(dst_dirpath)
             for filename in filenames:
                 src_filepath = os.path.join(dirpath, filename)
                 dst_filepath = os.path.join(dst_dirpath, filename)
                 if should_exclude(src_filepath):
                     continue  # 제외할 파일은 무시
+                print("copy with progress5\n")
                 futures.append(executor.submit(copy_file, src_filepath, dst_filepath, skipped_files, total_size, progress, progress_label))
 
         for future in futures:
@@ -147,30 +215,9 @@ def copy_with_progress(src, dst, progress, progress_label, progress_window, skip
     open_file_manager(dst)
     os.startfile(dst)  # 목적지 디렉토리를 파일 탐색기로 열기
 
-# 파일을 복사하면서 진행 상태를 업데이트하는 함수
-def copy_file(src_filepath, dst_filepath, skipped_files, total_size, progress, progress_label):
-    global copied_size
-    try:
-        if os.path.islink(src_filepath):
-            # 심볼릭 링크를 복사
-            linkto = os.readlink(src_filepath)
-            os.symlink(linkto, dst_filepath)
-        else:
-            # 심볼릭 링크가 아닌 경우에만 복사
-            copy_file_with_buffer(src_filepath, dst_filepath)
-            file_size = os.path.getsize(src_filepath)
-            with copied_size_lock:
-                copied_size += file_size  # 복사된 파일의 크기를 추적
-                progress_value = int((copied_size / total_size) * 100)
-                progress['value'] = progress_value
-                progress_label.config(text=f"{progress_value}%")
-                root.update_idletasks()
-    except (PermissionError, FileNotFoundError, OSError) as e:
-        skipped_files.append(src_filepath)
-        return str(e)
-
 # 백업을 시작하는 스레드를 생성하는 함수
 def start_backup_thread(source, target, progress, progress_label, progress_window):
+    print("start back up thread \n")
     target_path = os.path.join(target, os.path.basename(source))
     skipped_files = []
     global copied_size, copied_size_lock
@@ -188,7 +235,23 @@ def start_backup_thread(source, target, progress, progress_label, progress_windo
             with open(os.path.join(target, "skipped_files.log"), "w") as log_file:
                 for file in skipped_files:
                     log_file.write(f"{file}\n")
+            show_skipped_files(skipped_files)
             messagebox.showwarning("Warning", f"Some files were not backed up due to permission issues or missing files. See skipped_files.log in the target directory.")
+
+def show_skipped_files(skipped_files):
+    skipped_window = tk.Toplevel(root)
+    skipped_window.title("Skipped Files and Directories")
+    skipped_window.geometry("500x400")
+
+    listbox = tk.Listbox(skipped_window, selectmode=tk.SINGLE, width=80, height=20)
+    listbox.pack(padx=10, pady=10)
+
+    for item in skipped_files:
+        listbox.insert(tk.END, item)
+
+    close_button = tk.Button(skipped_window, text="Close", command=skipped_window.destroy)
+    close_button.pack(pady=10)
+
 
 def backup():
     source = source_entry.get()
@@ -213,6 +276,7 @@ def backup():
 
 # 풀 백업을 시작하는 함수
 def full_backup():
+    print("full back up start\n")
     source = "/"  # 시스템 전체를 소스로 설정
     target = target_entry.get()
     if not target:

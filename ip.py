@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import ttk, messagebox
 from subprocess import run
 
 def set_static_ip():
@@ -38,27 +38,60 @@ network:
     except Exception as e:
         messagebox.showerror('Error', f'An error occurred: {str(e)}')
 
+def add_placeholder(entry, placeholder_text):
+    entry.insert(0, placeholder_text)
+    entry.config(foreground='grey')
+
+    def on_focus_in(event):
+        if entry.get() == placeholder_text:
+            entry.delete(0, tk.END)
+            entry.config(foreground='black')
+
+    def on_focus_out(event):
+        if entry.get() == '':
+            entry.insert(0, placeholder_text)
+            entry.config(foreground='grey')
+
+    entry.bind("<FocusIn>", on_focus_in)
+    entry.bind("<FocusOut>", on_focus_out)
+
 # GUI 생성
 root = tk.Tk()
 root.title('IP Configuration')
+root.geometry('400x300')
+
+style = ttk.Style()
+style.configure("TLabel", font=("Helvetica", 12))
+style.configure("TButton", font=("Helvetica", 12))
+style.configure("TEntry", font=("Helvetica", 12), padding=10)
+
+# 프레임 생성
+frame = ttk.Frame(root, padding="10 10 10 10")
+frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
 # 레이블 및 입력 필드 추가
-tk.Label(root, text="IP Address:").grid(row=0)
-tk.Label(root, text="Subnet Mask:").grid(row=1)
-tk.Label(root, text="Gateway:").grid(row=2)
-tk.Label(root, text="DNS Servers:").grid(row=3)
+ttk.Label(frame, text="IP Address:").grid(row=0, column=0, sticky=tk.W, pady=5)
+ttk.Label(frame, text="Subnet Mask:").grid(row=1, column=0, sticky=tk.W, pady=5)
+ttk.Label(frame, text="Gateway:").grid(row=2, column=0, sticky=tk.W, pady=5)
+ttk.Label(frame, text="DNS Servers:").grid(row=3, column=0, sticky=tk.W, pady=5)
 
-ip_entry = tk.Entry(root)
-subnet_entry = tk.Entry(root)
-gateway_entry = tk.Entry(root)
-dns_entry = tk.Entry(root)
+ip_entry = ttk.Entry(frame, width=25)
+subnet_entry = ttk.Entry(frame, width=25)
+gateway_entry = ttk.Entry(frame, width=25)
+dns_entry = ttk.Entry(frame, width=25)
 
-ip_entry.grid(row=0, column=1)
-subnet_entry.grid(row=1, column=1)
-gateway_entry.grid(row=2, column=1)
-dns_entry.grid(row=3, column=1)
+ip_entry.grid(row=0, column=1, pady=5)
+subnet_entry.grid(row=1, column=1, pady=5)
+gateway_entry.grid(row=2, column=1, pady=5)
+dns_entry.grid(row=3, column=1, pady=5)
+
+# 예시 텍스트 추가
+add_placeholder(ip_entry, '192.168.1.100')
+add_placeholder(subnet_entry, '24')
+add_placeholder(gateway_entry, '192.168.1.1')
+add_placeholder(dns_entry, '8.8.8.8, 8.8.4.4')
 
 # 설정 버튼 추가
-tk.Button(root, text='Set IP', command=set_static_ip).grid(row=4, column=0, columnspan=2)
+ttk.Button(frame, text='Set IP', command=set_static_ip).grid(row=4, column=0, columnspan=2, pady=20)
 
 root.mainloop()
