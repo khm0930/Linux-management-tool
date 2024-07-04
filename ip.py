@@ -1,6 +1,15 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from subprocess import run
+import psutil
+
+def get_default_interface():
+    # 현재 활성화된 네트워크 인터페이스 이름 가져오기
+    addrs = psutil.net_if_addrs()
+    for interface in addrs:
+        if interface != 'lo':  # 'lo'는 루프백 인터페이스로 제외
+            return interface
+    return None
 
 def set_static_ip():
     ip_address = ip_entry.get()
@@ -8,7 +17,7 @@ def set_static_ip():
     gateway = gateway_entry.get()
     dns_servers = dns_entry.get()
 
-    interface_name = 'enp6s0'  # 인터페이스 이름은 해당 시스템에 따라 다를 수 있습니다.
+    interface_name = get_default_interface()  # 시스템의 기본 네트워크 인터페이스 이름 가져오기
 
     # 새로운 설정
     static_ip_config = f"""
