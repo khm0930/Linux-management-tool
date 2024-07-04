@@ -114,7 +114,7 @@ def perform_disk_cleanup():
         messagebox.showwarning("경고", "폴더를 선택해주세요.")
         return
 
-    move_old_files_to_trash(folder_path, 30)
+    move_old_files_to_trash(folder_path, 365)
     move_files_by_extension(folder_path, os.path.join(folder_path, "Images"), ".jpg")
     move_files_by_extension(folder_path, os.path.join(folder_path, "Images"), ".png")
     move_files_by_extension(folder_path, os.path.join(folder_path, "Documents"), ".pdf")
