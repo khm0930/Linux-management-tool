@@ -23,6 +23,13 @@ def run_capture_script():
         subprocess.run(["python3", script_path])
     except Exception as e:
         messagebox.showerror("오류", f"capture.py 파일 실행에 실패했습니다: {e}")
+
+def run_disk_cleanup_script():
+    try:
+        script_path = os.path.join(os.path.dirname(__file__), 'disk_cleanup.py')
+        subprocess.run(["python3", script_path])
+    except Exception as e:
+        messagebox.showerror("오류", f"disk_cleanup.py 파일 실행에 실패했습니다: {e}")
         
 def run_monitor_script():
     try:
@@ -30,6 +37,13 @@ def run_monitor_script():
         subprocess.run(["python3", script_path])
     except Exception as e:
         messagebox.showerror("오류", f"montior.py 파일 실행에 실패했습니다: {e}")
+
+def run_screeen_recorder_script():
+    try:
+        script_path = os.path.join(os.path.dirname(__file__), 'screen_recorder.py')
+        subprocess.run(["python3", script_path])
+    except Exception as e:
+        messagebox.showerror("오류", f"screen_recorder.py 파일 실행에 실패했습니다: {e}")
 
 def run_voice_script():
     try:
@@ -44,7 +58,7 @@ root.title("리눅스 도구 모음")
 root.geometry("400x320")
 
 # 레이블 생성
-title_label = tk.Label(root, text="리눅스 도구 모음", font=("Helvetica", 16))
+title_label = tk.Label(root, text="tool", font=("Helvetica", 16))
 title_label.pack(pady=10)
 
 # 버튼 프레임 생성
@@ -55,7 +69,7 @@ button_frame.pack(pady=10)
 btn_ip_change = tk.Button(button_frame, text="IP 변경", width=15, command=run_ip_script)
 btn_backup = tk.Button(button_frame, text="백업", width=15, command=run_backup_script)
 btn_screenshot = tk.Button(button_frame, text="스크린샷 캡처", width=15, command=run_capture_script)
-btn_disk_clean = tk.Button(button_frame, text="디스크 정리", width=15)
+btn_disk_clean = tk.Button(button_frame, text="디스크 정리", width=15, command=run_disk_cleanup_script)
 
 btn_ip_change.grid(row=0, column=0, padx=10, pady=5)
 btn_backup.grid(row=1, column=0, padx=10, pady=5)
@@ -65,7 +79,7 @@ btn_disk_clean.grid(row=3, column=0, padx=10, pady=5)
 # 두 번째 열 버튼
 btn_monitoring = tk.Button(button_frame, text="모니터링", width=15, command=run_monitor_script)
 btn_cloud_storage = tk.Button(button_frame, text="클라우드 스토리지", width=15)
-btn_record_screen = tk.Button(button_frame, text="화면 녹화", width=15)
+btn_record_screen = tk.Button(button_frame, text="화면 녹화", width=15 , command=run_screeen_recorder_script)
 btn_virtual_server = tk.Button(button_frame, text="가상 서버", width=15)
 
 btn_monitoring.grid(row=0, column=1, padx=10, pady=5)
