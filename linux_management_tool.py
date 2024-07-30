@@ -52,6 +52,13 @@ def run_screeen_recorder_script():
     except Exception as e:
         messagebox.showerror("오류", f"screen_recorder.py 파일 실행에 실패했습니다: {e}")
 
+def run_virtual_script():
+    try:
+        script_path = os.path.join(os.path.dirname(__file__), 'virtual.py')
+        subprocess.run(["python3", script_path])
+    except Exception as e:
+        messagebox.showerror("오류", f"virtual.py 파일 실행에 실패했습니다: {e}")
+
 def run_voice_script():
     try:
         script_path = os.path.join(os.path.dirname(__file__), 'ai_voice2.py')
@@ -87,7 +94,7 @@ btn_disk_clean.grid(row=3, column=0, padx=10, pady=5)
 btn_monitoring = tk.Button(button_frame, text="모니터링", width=15, command=run_monitor_script)
 btn_cloud_storage = tk.Button(button_frame, text="클라우드 스토리지", width=15, command=run_cloud_storge_script)
 btn_record_screen = tk.Button(button_frame, text="화면 녹화", width=15 , command=run_screeen_recorder_script)
-btn_virtual_server = tk.Button(button_frame, text="가상 서버", width=15)
+btn_virtual_server = tk.Button(button_frame, text="가상 서버", width=15, command=run_virtual_script)
 
 btn_monitoring.grid(row=0, column=1, padx=10, pady=5)
 btn_cloud_storage.grid(row=1, column=1, padx=10, pady=5)
