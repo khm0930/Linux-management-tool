@@ -9,7 +9,7 @@ from PIL import Image, ImageTk
 class CloudStorageApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Cloud Storage")
+        self.root.title("클라우드 스토리지")
 
         self.aws_access_key_id = ''
         self.aws_secret_access_key = ''
@@ -22,26 +22,26 @@ class CloudStorageApp:
         main_frame = tk.Frame(self.root)
         main_frame.pack(padx=10, pady=10, fill=tk.BOTH, expand=True)
 
-        self.title_label = tk.Label(main_frame, text="Cloud Storage", font=("Helvetica", 16))
+        self.title_label = tk.Label(main_frame, text="클라우드 스토리지", font=("Helvetica", 16))
         self.title_label.grid(row=0, column=0, columnspan=2, pady=10)
 
         # Bucket Frame
-        bucket_frame = tk.LabelFrame(main_frame, text="Bucket Operations", padx=10, pady=10)
+        bucket_frame = tk.LabelFrame(main_frame, text="버킷 작업", padx=10, pady=10)
         bucket_frame.grid(row=1, column=0, padx=10, pady=10, sticky=tk.N)
 
-        tk.Button(bucket_frame, text="Create Bucket", command=self.create_bucket, width=20).pack(pady=5)
-        tk.Button(bucket_frame, text="Select Bucket", command=self.select_bucket, width=20).pack(pady=5)
-        tk.Button(bucket_frame, text="Delete Bucket", command=self.delete_bucket, width=20).pack(pady=5)
-        tk.Button(bucket_frame, text="Reset Credentials", command=self.reset_credentials, width=20).pack(pady=5)
+        tk.Button(bucket_frame, text="버킷 생성", command=self.create_bucket, width=20).pack(pady=5)
+        tk.Button(bucket_frame, text="버킷 선택", command=self.select_bucket, width=20).pack(pady=5)
+        tk.Button(bucket_frame, text="버킷 삭제", command=self.delete_bucket, width=20).pack(pady=5)
+        tk.Button(bucket_frame, text="자격 증명 재설정", command=self.reset_credentials, width=20).pack(pady=5)
 
         # File Frame
-        file_frame = tk.LabelFrame(main_frame, text="File Operations", padx=10, pady=10)
+        file_frame = tk.LabelFrame(main_frame, text="파일 작업", padx=10, pady=10)
         file_frame.grid(row=1, column=1, padx=10, pady=10, sticky=tk.N)
 
-        tk.Button(file_frame, text="Upload File", command=self.upload_file, width=20).pack(pady=5)
-        tk.Button(file_frame, text="Download File", command=self.download_selected_file, width=20).pack(pady=5)
-        tk.Button(file_frame, text="Delete File", command=self.delete_selected_file, width=20).pack(pady=5)
-        tk.Button(file_frame, text="Upload Folder", command=self.upload_folder, width=20).pack(pady=5)
+        tk.Button(file_frame, text="파일 업로드", command=self.upload_file, width=20).pack(pady=5)
+        tk.Button(file_frame, text="파일 다운로드", command=self.download_selected_file, width=20).pack(pady=5)
+        tk.Button(file_frame, text="파일 삭제", command=self.delete_selected_file, width=20).pack(pady=5)
+        tk.Button(file_frame, text="폴더 업로드", command=self.upload_folder, width=20).pack(pady=5)
 
         self.file_listbox = tk.Listbox(main_frame, selectmode=tk.SINGLE, width=50)
         self.file_listbox.grid(row=2, column=0, columnspan=2, pady=10)
@@ -81,15 +81,15 @@ class CloudStorageApp:
         # 자격 증명 파일 삭제 및 새로운 자격 증명 입력
         if os.path.exists("aws_credentials.json"):
             os.remove("aws_credentials.json")
-        self.aws_access_key_id = simpledialog.askstring("Input", "Enter your AWS Access Key ID")
-        self.aws_secret_access_key = simpledialog.askstring("Input", "Enter your AWS Secret Access Key")
+        self.aws_access_key_id = simpledialog.askstring("입력", "AWS 액세스 키 ID를 입력하세요")
+        self.aws_secret_access_key = simpledialog.askstring("입력", "AWS 비밀 액세스 키를 입력하세요")
         self.save_credentials()
-        messagebox.showinfo("Success", "Credentials reset successfully")
+        messagebox.showinfo("성공", "자격 증명이 재설정되었습니다")
 
     def create_bucket(self):
         if not self.aws_access_key_id or not self.aws_secret_access_key:
-            self.aws_access_key_id = simpledialog.askstring("Input", "Enter your AWS Access Key ID")
-            self.aws_secret_access_key = simpledialog.askstring("Input", "Enter your AWS Secret Access Key")
+            self.aws_access_key_id = simpledialog.askstring("입력", "AWS 액세스 키 ID를 입력하세요")
+            self.aws_secret_access_key = simpledialog.askstring("입력", "AWS 비밀 액세스 키를 입력하세요")
             self.save_credentials()  # 자격 증명 저장
 
         s3 = boto3.client(
@@ -100,37 +100,37 @@ class CloudStorageApp:
         )
 
         while True:
-            self.bucket_name = simpledialog.askstring("Input", "Enter the new bucket name")
+            self.bucket_name = simpledialog.askstring("입력", "새 버킷 이름을 입력하세요")
             try:
                 s3.create_bucket(Bucket=self.bucket_name, CreateBucketConfiguration={'LocationConstraint': 'ap-northeast-2'})
-                messagebox.showinfo("Success", "Bucket created successfully")
+                messagebox.showinfo("성공", "버킷이 성공적으로 생성되었습니다")
                 break
             except ClientError as e:
                 if e.response['Error']['Code'] == 'BucketAlreadyExists':
-                    messagebox.showerror("Error", "Bucket name already exists. Please choose a different name.")
+                    messagebox.showerror("오류", "버킷 이름이 이미 존재합니다. 다른 이름을 선택하세요.")
                 elif e.response['Error']['Code'] == 'BucketAlreadyOwnedByYou':
-                    messagebox.showinfo("Info", "Bucket already exists. Using existing bucket.")
+                    messagebox.showinfo("정보", "버킷이 이미 존재합니다. 기존 버킷을 사용합니다.")
                     break
                 else:
-                    messagebox.showerror("Error", f"Failed to create bucket: {e}")
+                    messagebox.showerror("오류", f"버킷 생성 실패: {e}")
                     return
         self.update_bucket_list()
 
     def select_bucket(self):
         selected_bucket = self.file_listbox.get(tk.ACTIVE)
         if not selected_bucket:
-            messagebox.showerror("Error", "No bucket selected")
+            messagebox.showerror("오류", "선택된 버킷이 없습니다")
             return
 
         self.bucket_name = selected_bucket
-        self.title_label.config(text=f"Bucket: {self.bucket_name} - File List")
+        self.title_label.config(text=f"버킷: {self.bucket_name} - 파일 목록")
         self.back_button.grid()
         self.update_file_list()
 
     def delete_bucket(self):
         selected_bucket = self.file_listbox.get(tk.ACTIVE)
         if not selected_bucket:
-            messagebox.showerror("Error", "No bucket selected")
+            messagebox.showerror("오류", "선택된 버킷이 없습니다")
             return
 
         s3 = boto3.client(
@@ -148,15 +148,15 @@ class CloudStorageApp:
                     s3.delete_object(Bucket=selected_bucket, Key=item['Key'])
 
             s3.delete_bucket(Bucket=selected_bucket)
-            messagebox.showinfo("Success", "Bucket deleted successfully")
+            messagebox.showinfo("성공", "버킷이 성공적으로 삭제되었습니다")
             self.update_bucket_list()
         except ClientError as e:
-            messagebox.showerror("Error", f"Failed to delete bucket: {e}")
+            messagebox.showerror("오류", f"버킷 삭제 실패: {e}")
 
     def update_bucket_list(self):
         self.file_listbox.delete(0, tk.END)
         bucket_list = self.get_bucket_list()
-        self.title_label.config(text="Bucket List")
+        self.title_label.config(text="버킷 목록")
         for bucket in bucket_list:
             self.file_listbox.insert(tk.END, bucket)
         self.back_button.grid_remove()
@@ -173,7 +173,7 @@ class CloudStorageApp:
 
     def upload_file(self):
         if not self.bucket_name:
-            messagebox.showerror("Error", "No bucket selected")
+            messagebox.showerror("오류", "선택된 버킷이 없습니다")
             return
 
         file_path = filedialog.askopenfilename()
@@ -182,34 +182,34 @@ class CloudStorageApp:
             try:
                 s3 = boto3.client('s3', aws_access_key_id=self.aws_access_key_id, aws_secret_access_key=self.aws_secret_access_key, region_name='ap-northeast-2')
                 s3.upload_file(file_path, self.bucket_name, file_path.split('/')[-1])
-                messagebox.showinfo("Success", "File uploaded successfully")
+                messagebox.showinfo("성공", "파일이 성공적으로 업로드되었습니다")
                 self.update_file_list()
             except FileNotFoundError:
-                messagebox.showerror("Error", "The file was not found")
+                messagebox.showerror("오류", "파일을 찾을 수 없습니다")
             except NoCredentialsError:
-                messagebox.showerror("Error", "Credentials not available")
+                messagebox.showerror("오류", "자격 증명이 없습니다")
             finally:
                 self.progress.stop()
 
     def download_selected_file(self):
         if not self.bucket_name:
-            messagebox.showerror("Error", "No bucket selected")
+            messagebox.showerror("오류", "선택된 버킷이 없습니다")
             return
 
         selected_file = self.file_listbox.get(tk.ACTIVE)
         if not selected_file:
-            messagebox.showerror("Error", "No file selected")
+            messagebox.showerror("오류", "선택된 파일이 없습니다")
             return
         self.download_file(selected_file)
 
     def delete_selected_file(self):
         if not self.bucket_name:
-            messagebox.showerror("Error", "No bucket selected")
+            messagebox.showerror("오류", "선택된 버킷이 없습니다")
             return
 
         selected_file = self.file_listbox.get(tk.ACTIVE)
         if not selected_file:
-            messagebox.showerror("Error", "No file selected")
+            messagebox.showerror("오류", "선택된 파일이 없습니다")
             return
         self.delete_file(selected_file)
 
@@ -220,30 +220,30 @@ class CloudStorageApp:
             try:
                 s3 = boto3.client('s3', aws_access_key_id=self.aws_access_key_id, aws_secret_access_key=self.aws_secret_access_key, region_name='ap-northeast-2')
                 s3.download_file(self.bucket_name, file_name, save_path)
-                messagebox.showinfo("Success", "File downloaded successfully")
+                messagebox.showinfo("성공", "파일이 성공적으로 다운로드되었습니다")
             except FileNotFoundError:
-                messagebox.showerror("Error", "The file was not found in the bucket")
+                messagebox.showerror("오류", "버킷에서 파일을 찾을 수 없습니다")
             except NoCredentialsError:
-                messagebox.showerror("Error", "Credentials not available")
+                messagebox.showerror("오류", "자격 증명이 없습니다")
             finally:
                 self.progress.stop()
 
     def delete_file(self, file_name):
-        if messagebox.askyesno("Delete", f"Are you sure you want to delete {file_name}?"):
+        if messagebox.askyesno("삭제", f"{file_name} 파일을 삭제하시겠습니까?"):
             self.progress.start()
             try:
                 s3 = boto3.client('s3', aws_access_key_id=self.aws_access_key_id, aws_secret_access_key=self.aws_secret_access_key, region_name='ap-northeast-2')
                 s3.delete_object(Bucket=self.bucket_name, Key=file_name)
-                messagebox.showinfo("Success", "File deleted successfully")
+                messagebox.showinfo("성공", "파일이 성공적으로 삭제되었습니다")
                 self.update_file_list()
             except NoCredentialsError:
-                messagebox.showerror("Error", "Credentials not available")
+                messagebox.showerror("오류", "자격 증명이 없습니다")
             finally:
                 self.progress.stop()
 
     def upload_folder(self):
         if not self.bucket_name:
-            messagebox.showerror("Error", "No bucket selected")
+            messagebox.showerror("오류", "선택된 버킷이 없습니다")
             return
 
         folder_path = filedialog.askdirectory()
@@ -256,12 +256,12 @@ class CloudStorageApp:
                         file_path = os.path.join(root, file)
                         s3_path = os.path.relpath(file_path, folder_path)
                         s3.upload_file(file_path, self.bucket_name, s3_path)
-                messagebox.showinfo("Success", "Folder uploaded successfully")
+                messagebox.showinfo("성공", "폴더가 성공적으로 업로드되었습니다")
                 self.update_file_list()
             except FileNotFoundError:
-                messagebox.showerror("Error", "The folder was not found")
+                messagebox.showerror("오류", "폴더를 찾을 수 없습니다")
             except NoCredentialsError:
-                messagebox.showerror("Error", "Credentials not available")
+                messagebox.showerror("오류", "자격 증명이 없습니다")
             finally:
                 self.progress.stop()
 
@@ -273,7 +273,7 @@ class CloudStorageApp:
             response = s3.list_buckets()
             return [bucket['Name'] for bucket in response['Buckets']]
         except NoCredentialsError:
-            messagebox.showerror("Error", "Credentials not available")
+            messagebox.showerror("오류", "자격 증명이 없습니다")
             return []
 
     def get_file_list(self):
@@ -286,7 +286,7 @@ class CloudStorageApp:
                 return [item['Key'] for item in response['Contents']]
             return []
         except NoCredentialsError:
-            messagebox.showerror("Error", "Credentials not available")
+            messagebox.showerror("오류", "자격 증명이 없습니다")
             return []
 
 if __name__ == "__main__":
